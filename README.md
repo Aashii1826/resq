@@ -1,83 +1,76 @@
-# RESQ — Urban Cascading Infrastructure Failure & Resilience
+# RESQ
 
-> RESQ doesn't just tell planners what failed. It shows how failure
-> propagates, identifies the infrastructure that matters most to the
-> entire system, and determines where limited intervention can prevent
-> the greatest downstream damage.
+**When one piece of a city breaks, what happens to everything connected to it?**
 
-2-day hackathon prototype. MVP scope: road network (primary) + hospitals
-(secondary) + population accessibility (impact layer). See `CONTRACTS.md`
-for module interfaces between team members.
+RESQ is a decision-support tool for urban resilience planning. Roads, hospitals, and the people who depend on them are all connected — a single road closure doesn't just cause a detour, it can overload other roads, cut off ambulance routes, and leave entire neighborhoods without fast access to care. Most infrastructure monitoring looks at assets one at a time. RESQ looks at the whole chain reaction.
 
-## Team split
+Built for [hackathon name] in 2 days.
 
-| Person | Owns |
+## What it does
+
+Pick a road on the map, fail it, and watch what happens:
+- Traffic reroutes in real time through the network
+- Nearby roads get overloaded as they absorb the extra load
+- Hospital accessibility for surrounding neighborhoods degrades
+- The system tells you exactly how much worse things got — not just that they did
+
+Then it goes a step further: RESQ ranks every road and junction by how much damage its failure would actually cause (not just how "connected" it looks on paper), and recommends where to spend a limited resilience budget for the biggest possible improvement.
+
+**The core insight:** a road that looks unimportant by traditional network metrics can be the single most damaging point of failure in the whole system — because failure impact depends on the whole cascade, not just how many roads connect to it.
+
+## How it works
+
+```
+MAP → BREAK → PROPAGATE → MEASURE → RANK → INTERVENE → COMPARE
+```
+
+1. A road network is simulated with realistic traffic demand and capacity
+2. Failing a road triggers an iterative cascade — traffic redistributes, new bottlenecks form, the network keeps adjusting until it settles
+3. Impact is measured in concrete terms: population affected, travel time increase, hospital access loss
+4. Every road/junction gets a systemic criticality score, compared against standard graph centrality
+5. Candidate interventions (capacity upgrades, alternate routes, better hospital access) get tested by actually re-running the simulation, not guessed
+6. A budget-constrained optimizer finds the intervention combo with the biggest resilience payoff
+
+## Team
+
+| Person | Working on |
 |---|---|
-| **1 (foundation)** | Repo scaffold, models, synthetic + OSM data loaders, routing engine, OD demand & traffic assignment — **done, tested (11/11 passing)** |
-| **2 (cascade & impact)** | `simulation/cascade.py`, `simulation/impact.py` — iterative failure propagation, hospital accessibility loss, resilience score |
-| **3 (criticality & intervention & API)** | `simulation/criticality.py`, `simulation/interventions.py`, all FastAPI endpoints |
-| **4 (frontend)** | React/Vite + MapLibre app: map, dashboard, cascade timeline, criticality panel, intervention planner |
+| 1 | Core engine — city graph, routing, traffic simulation |
+| 2 | Cascade propagation + impact scoring |
+| 3 | Criticality ranking + intervention optimizer + API |
+| 4 | Frontend — map, dashboard, timeline |
 
-## Quickstart (backend, what exists today)
+See `CONTRACTS.md` for how the pieces fit together.
+
+## Running it
 
 ```bash
 cd backend
-pip install -r requirements.txt --break-system-packages
-PYTHONPATH=. python3 scripts/baseline_report.py   # proves graph->routing->demand works
-PYTHONPATH=. python3 -m pytest tests/ -v          # 11 tests, all green
+python3 -m venv venv
+source venv/bin/activate
+python3 -m pip install -r requirements.txt
+PYTHONPATH=. python3 scripts/baseline_report.py
 ```
 
-Sample output:
+You should see something like:
 
 ```
 BASELINE
-
-Nodes: 120
-Roads: 394
-Hospitals: 8
-Population zones: 18
-
-OD pairs simulated: 60 (unrouted: 0)
-Average travel time (sampled OD routes): 4.6 min
-Stressed roads: 2
-Overloaded roads: 0
+Nodes: 120   Roads: 394   Hospitals: 8
+Stressed roads: 2   Overloaded roads: 0
 ```
 
-## Architecture
+That confirms the simulation engine is working end to end — city generated, traffic simulated, everything measurable.
 
-```
-data (loader.py dispatches to synthetic_loader.py or osm_loader.py)
-   ↓
-models (Asset, RoadEdge, Network, Scenario, Intervention)
-   ↓
-simulation
-   routing.py    ✅ done — shortest path, congestion-weighted
-   demand.py     ✅ done — OD generation + capacity-restrained assignment
-   cascade.py    ⬜ Person 2
-   impact.py     ⬜ Person 2
-   criticality.py ⬜ Person 3
-   interventions.py ⬜ Person 3
-   ↓
-api/*.py        ⬜ Person 3 (FastAPI, 8 endpoints per spec Section 26)
-   ↓
-frontend/       ⬜ Person 4 (React + MapLibre)
+Run the tests:
+```bash
+PYTHONPATH=. python3 -m pytest tests/ -v
 ```
 
-## Data: real vs modelled
+## The demo city
 
-**Real/observed** (when using `mode="real"` OSM loading): road geometry,
-junction locations, hospital locations.
+A synthetic urban network, generated the same way every time (so the live demo never breaks): two neighborhoods connected by just **3 bridge roads** — a deliberate chokepoint that makes for a dramatic, obvious cascade when one of them fails. 120 junctions, 8 hospitals, 18 population zones.
 
-**Modelled/assumed** (always, documented in `app/config.py`): road
-capacities by type, OD travel demand, congestion multiplier curve,
-resilience score weights, intervention costs. None of these are official
-municipal traffic counts — they're illustrative prototype parameters,
-intentionally centralized and easy to tune live during the demo.
+## A note on the numbers
 
-## Demo network
-
-Deterministic synthetic city (seed 42, always reproducible): two 8×7 grid
-districts ("west"/"east") joined by exactly **3 bridge roads** — a
-deliberate structural bottleneck, good for showing dramatic cascades. 120
-nodes, 394 directed road edges (197 unique bidirectional segments), 8
-hospitals, 18 population zones.
+Real road geometry and hospital/facility locations come from OpenStreetMap when available. Traffic demand, road capacity assumptions, congestion behavior, and intervention costs are **modelled, not measured** — they're documented, configurable prototype parameters (see `app/config.py`), not official traffic counts. We say this clearly in the UI too. Nothing here should be read as real municipal data.
