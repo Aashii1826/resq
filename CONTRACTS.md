@@ -64,25 +64,6 @@ net.fail_edge("R41")
 stats = assign_demand(net, od_pairs, iterations=4)  # redistributes traffic
 ```
 
-## Still to build
-
-- `simulation/cascade.py` — the iterative failure→redistribution→
-  restabilization loop (fail an asset, re-route, find newly overloaded
-  edges, repeat until stable or max iterations, track cascade depth)
-- `simulation/impact.py` — hospital accessibility loss, population
-  exposure, resilience score (weights already live in
-  `config.PRIORITY_MODE_WEIGHTS`, no need to invent them)
-- `simulation/criticality.py` — systemic criticality ranking + comparison
-  against standard graph centrality
-- `simulation/interventions.py` — apply/evaluate/optimize logic for the
-  three intervention types
-- `api/*.py` — FastAPI app and endpoints (network, baseline, simulate,
-  criticality, intervention evaluate/optimize, scenario compare)
-- `frontend/` — the whole thing: map, dashboard, cascade timeline,
-  criticality panel, intervention planner
-
-## Demo network shape
-
 Two 8×7 grids ("west" and "east" districts, ~112 junction nodes)
 connected by only **3 bridge roads** — that's the deliberate structural
 bottleneck. 8 hospitals, 18 population zones anchored to real junctions.
