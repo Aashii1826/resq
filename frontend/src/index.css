@@ -1,0 +1,67 @@
+:root {
+  /* Color — asphalt + traffic-signal palette, grounded in the subject
+     matter (roads, night operations) rather than a generic dark theme */
+  --bg-base: #16140f;
+  --bg-panel: #1f1c16;
+  --bg-panel-raised: #262219;
+  --border: #3a362c;
+  --border-soft: #2a2720;
+
+  --text-primary: #f2efe6;
+  --text-secondary: #a9a28e;
+  --text-tertiary: #766f5d;
+
+  --accent: #ffb020;
+  --accent-dim: #8a6320;
+
+  --status-healthy: #4cc9a0;
+  --status-stressed: #ffc94a;
+  --status-overloaded: #ff7a45;
+  --status-failed: #ff4d4d;
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', 'SF Mono', monospace;
+
+  --radius-sm: 3px;
+  --radius-md: 6px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+}
+
+button:focus-visible,
+[tabindex]:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
