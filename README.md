@@ -4,7 +4,7 @@
 
 RESQ is a decision-support tool for urban resilience planning. Roads, hospitals, and the people who depend on them are all connected — a single road closure doesn't just cause a detour, it can overload other roads, cut off ambulance routes, and leave entire neighborhoods without fast access to care. Most infrastructure monitoring looks at assets one at a time. RESQ looks at the whole chain reaction.
 
-Built for [hackathon name] in 2 days.
+Built for M#.
 
 ## What it does
 
@@ -30,17 +30,6 @@ MAP → BREAK → PROPAGATE → MEASURE → RANK → INTERVENE → COMPARE
 4. Every road/junction gets a systemic criticality score, compared against standard graph centrality
 5. Candidate interventions (capacity upgrades, alternate routes, better hospital access) get tested by actually re-running the simulation, not guessed
 6. A budget-constrained optimizer finds the intervention combo with the biggest resilience payoff
-
-## Team
-
-| Person | Working on |
-|---|---|
-| 1 | Core engine — city graph, routing, traffic simulation |
-| 2 | Cascade propagation + impact scoring |
-| 3 | Criticality ranking + intervention optimizer + API |
-| 4 | Frontend — map, dashboard, timeline |
-
-See `CONTRACTS.md` for how the pieces fit together.
 
 ## Running it
 
