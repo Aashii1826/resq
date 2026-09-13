@@ -61,13 +61,96 @@ stats = assign_demand(net, od_pairs, iterations=4)  # redistributes traffic
 
 ## What's deliberately NOT here (yours to build)
 
-- **Person 2**: `simulation/cascade.py` (the step 1–10 iteration loop from
-  Section 13, cascade depth tracking per Section 14), `simulation/impact.py`
-  (hospital accessibility loss, population exposure, resilience score —
-  weights already live in `config.PRIORITY_MODE_WEIGHTS`)
+- **Person 2 — done, see below.**
 - **Person 3**: `simulation/criticality.py`, `simulation/interventions.py`,
   all of `api/*.py` (FastAPI app + the 8 endpoints from Section 26)
 - **Person 4**: entire `frontend/`
+
+---
+
+## Interfaces from Person 2 (Cascade & Impact layer)
+
+Status: **cascade.py + impact.py done and tested** (13 new tests, all
+passing alongside Person 1's 11). This is what Person 3's criticality
+ranking and intervention optimizer are built on top of.
+
+Run it yourself:
+```bash
+cd backend
+PYTHONPATH=. python3 scripts/cascade_report.py
+PYTHONPATH=. python3 -m pytest tests/ -v
+```
+
+### `app/simulation/cascade.py`
+
+```python
+from app.simulation.cascade import simulate_failure, reset_and_rebaseline
+
+result = simulate_failure(net, ["R389"], od_pairs)   # net + od_pairs from
+                                                       # compute_baseline()
+result.cascade_depth            # int - how many hops the disruption propagated
+result.stabilized               # bool
+result.final_overloaded_edges   # List[str]
+result.final_failed_edges       # List[str]
+result.unreachable_hospital_zones  # List[str] - zones fully cut off
+result.timeline                 # List[CascadeStepState] - one per iteration,
+                                 # drives the frontend cascade timeline (Section 30)
+result.to_dict()                # JSON-ready
+
+# IMPORTANT: simulate_failure() mutates `net` in place (fails edges,
+# reassigns load). To run another scenario on the SAME network object:
+reset_and_rebaseline(net, od_pairs)   # restores HEALTHY + re-assigns baseline load
+```
+
+For Person 3's criticality scan (many failures against the same network)
+and intervention before/after comparisons: call `reset_and_rebaseline()`
+between runs, or just call `load_network(mode="demo")` fresh each time if
+you'd rather not deal with mutation at all - both are cheap at this scale
+(120 nodes / ~400 edges).
+
+### `app/simulation/impact.py`
+
+```python
+from app.simulation.impact import capture_baseline_snapshot, evaluate_impact
+
+# ONCE, right after compute_baseline(), before any failures:
+snapshot = capture_baseline_snapshot(net, od_pairs)
+# snapshot.access               Dict[zone_id, ZoneAccessibility] (baseline)
+# snapshot.avg_travel_time      float, minutes
+# snapshot.resilience_score     float, ~100 on a healthy network
+
+# after simulate_failure():
+report = evaluate_impact(
+    network=net, od_pairs=od_pairs,
+    baseline_access=snapshot.access,
+    baseline_avg_travel_time=snapshot.avg_travel_time,
+    baseline_resilience_score=snapshot.resilience_score,
+    cascade_result=result,
+    priority_mode="balanced",   # or "emergency_access" / "population_protection" / "mobility"
+)
+report.resilience_score                 # 0-100
+report.population_affected              # int - Section 17 "Simulated population exposure"
+report.travel_time_increase_percent
+report.healthcare_access_loss_percent
+report.cascade_depth
+report.overloaded_edges
+report.accessibility                    # AccessibilityImpact - per-zone detail for the map/panels
+report.resilience_breakdown             # ResilienceBreakdown - per-component scores (Section 18)
+report.timeline                         # same as cascade result, JSON-ready
+report.to_dict()                        # matches models/scenario.py::ScenarioResult shape,
+                                         # ready to drop straight into a /simulate response
+```
+
+**Pattern for Person 3 (criticality + interventions):** for a criticality
+scan, run `capture_baseline_snapshot()` once, then for each candidate
+asset: `reset_and_rebaseline()` -> `simulate_failure([asset_id], od_pairs)`
+-> `evaluate_impact(...)` -> read `report.resilience_score` (lower =
+more critical) or build your own weighted criticality formula from
+`report.accessibility`, `report.cascade_depth`, `report.overloaded_edges`,
+etc. (Section 19's metric list). For intervention before/after (Section
+23): snapshot once, run the SAME failure with and without the intervention
+applied to the network first, and diff the two `report.resilience_score`
+values.
 
 ## Demo network shape (so you can design around it)
 
